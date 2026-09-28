@@ -64,10 +64,10 @@ export const MOVES: Record<MoveId, Move> = {
   },
   long: {
     id: 'long',
-    startup: 14, active: 4, recovery: 22,
+    startup: 14, active: 4, recovery: 28,
     hit: { x0: 32, x1: 213, y0: -18, y1: 0 },
     sweet: 173,
-    thickness: 18, hold: 14,
+    thickness: 18, hold: 18,
     damage: 9, kb: 10, cos: 0.8660254037844387, sin: 0.5, // 30°
     hitstop: 9, lunge: 0,
   },
