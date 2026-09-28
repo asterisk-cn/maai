@@ -23,12 +23,13 @@
   const WIN_Y = BAR_Y + BAR_H + 22; // centre of the round-win marks
   const PAD_X = 100;
   const PAD_Y = 598;
-  const PAD_SPAN = 278; // left button centre → last button centre
+  const PAD_SPAN = 218; // left button centre → last button centre
 
-  type Action = 'left' | 'right' | 'short' | 'long' | 'dash';
+  // dash has no button: it's a double tap on a direction
+  type Action = 'left' | 'right' | 'short' | 'long';
   const KEYS: Record<Action, string>[] = [
-    { left: 'KeyA', right: 'KeyD', short: 'KeyF', long: 'KeyG', dash: 'KeyH' },
-    { left: 'ArrowLeft', right: 'ArrowRight', short: 'Comma', long: 'Period', dash: 'Slash' },
+    { left: 'KeyA', right: 'KeyD', short: 'KeyF', long: 'KeyG' },
+    { left: 'ArrowLeft', right: 'ArrowRight', short: 'Comma', long: 'Period' },
   ];
 
   type Mode = 'title' | 'cpu' | 'versus' | 'online';
@@ -63,7 +64,7 @@
     const sets = (mode === 'cpu' && p === 0) || mode === 'online' ? [KEYS[0], KEYS[1]] : [KEYS[p]];
     const h = (a: Action) => sets.some((k) => held.has(k[a]));
     const pr = (a: Action) => sets.some((k) => pressed.has(k[a]));
-    return { left: h('left'), right: h('right'), short: pr('short'), long: pr('long'), dash: pr('dash') };
+    return { left: h('left'), right: h('right'), short: pr('short'), long: pr('long'), dash: false };
   }
 
   function tick() {
@@ -436,7 +437,7 @@
         <div class="menu">
           {#if menu === 'main'}
             <button onclick={() => start('cpu')}>VS CPU</button>
-            <button onclick={() => start('versus')}>2P 対戦</button>
+            <button onclick={() => start('versus')}>オフライン</button>
             <button onclick={() => { netError = ''; menu = 'online'; }}>オンライン</button>
             {#if netError}<p class="note">{netError}</p>{/if}
           {:else if menu === 'online'}

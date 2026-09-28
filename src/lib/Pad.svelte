@@ -1,5 +1,5 @@
 <script lang="ts">
-  type Action = 'left' | 'right' | 'short' | 'long' | 'dash';
+  type Action = 'left' | 'right' | 'short' | 'long';
 
   let { x, y, keys, color, down, onpress }: {
     x: number; // SVG position of the left direction button
@@ -11,13 +11,12 @@
   } = $props();
 
   const R = 25;
-  // leverless layout: two direction buttons, then three attack buttons in an arc
+  // leverless layout: two direction buttons, then the two attack buttons
   const LAYOUT: { a: Action; dx: number; dy: number; attack: boolean }[] = [
     { a: 'left', dx: 0, dy: 0, attack: false },
     { a: 'right', dx: 60, dy: 12, attack: false },
     { a: 'short', dx: 158, dy: 8, attack: true },
     { a: 'long', dx: 218, dy: -2, attack: true },
-    { a: 'dash', dx: 278, dy: 4, attack: true },
   ];
 
   function bind(code: string) {
@@ -50,8 +49,6 @@
             <rect x="-9" y="-6" width="18" height="12" rx="2" />
           {:else if b.a === 'long'}
             <rect x="-14" y="-2.5" width="28" height="5" rx="1.5" />
-          {:else}
-            <polygon points="-8.5,-8 1.5,0 -8.5,8" /><polygon points="2.5,-8 12.5,0 2.5,8" />
           {/if}
         </g>
       </g>
