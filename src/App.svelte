@@ -28,10 +28,6 @@
     { left: 'KeyA', right: 'KeyD', short: 'KeyF', long: 'KeyG', dash: 'KeyH' },
     { left: 'ArrowLeft', right: 'ArrowRight', short: 'Comma', long: 'Period', dash: 'Slash' },
   ];
-  const LABELS: Record<Action, string>[] = [
-    { left: 'A', right: 'D', short: 'F', long: 'G', dash: 'H' },
-    { left: '←', right: '→', short: ',', long: '.', dash: '/' },
-  ];
 
   type Mode = 'title' | 'cpu' | 'versus';
   let mode = $state<Mode>('title');
@@ -311,9 +307,9 @@
           {/each}
         {/each}
 
-        <Pad x={PAD_X} y={PAD_Y} keys={KEYS[0]} labels={LABELS[0]} color={COLORS[0]} down={held} onpress={press} />
+        <Pad x={PAD_X} y={PAD_Y} keys={KEYS[0]} color={COLORS[0]} down={held} onpress={press} />
         {#if mode === 'versus'}
-          <Pad x={W - PAD_X - PAD_SPAN} y={PAD_Y} keys={KEYS[1]} labels={LABELS[1]} color={COLORS[1]} down={held} onpress={press} />
+          <Pad x={W - PAD_X - PAD_SPAN} y={PAD_Y} keys={KEYS[1]} color={COLORS[1]} down={held} onpress={press} />
         {/if}
 
         {#if view.phase === 'ready'}
