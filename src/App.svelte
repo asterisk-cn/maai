@@ -9,6 +9,7 @@
   import Fighter from './lib/Fighter.svelte';
   import Pad from './lib/Pad.svelte';
   import HowTo from './lib/HowTo.svelte';
+  import TouchPad from './lib/TouchPad.svelte';
   import { Rollback, type Packet } from './lib/rollback';
   import { connect, newRoomCode, type Peer } from './lib/net';
 
@@ -39,6 +40,7 @@
   let menu = $state<'main' | 'online' | 'host' | 'join' | 'connecting' | 'howto'>('main');
   let paused = $state(false);
   let showBoxes = $state(false);
+  let touch = $state(false); // coarse pointer: finger-sized buttons instead of the in-screen ones
 
   let game: Game = newGame();
   let view = $state.raw<Game>(structuredClone(game));
@@ -187,6 +189,9 @@
   }
 
   onMount(() => {
+    const coarse = matchMedia('(pointer: coarse)');
+    touch = coarse.matches;
+    coarse.onchange = () => (touch = coarse.matches);
     if (import.meta.env.DEV) {
       Object.assign(window, {
         __game: () => game,
@@ -410,12 +415,14 @@
           {/each}
         {/each}
 
-        {#if mode === 'online'}
+        {#if touch}
+          <!-- drawn outside the scaled screen: see TouchPad below -->
+        {:else if mode === 'online'}
           <Pad x={me === 0 ? PAD_X : W - PAD_X - PAD_SPAN} y={PAD_Y} keys={KEYS[0]} color={COLORS[me]} down={held} onpress={press} />
         {:else}
           <Pad x={PAD_X} y={PAD_Y} keys={KEYS[0]} color={COLORS[0]} down={held} onpress={press} />
         {/if}
-        {#if mode === 'versus'}
+        {#if mode === 'versus' && !touch}
           <Pad x={W - PAD_X - PAD_SPAN} y={PAD_Y} keys={KEYS[1]} color={COLORS[1]} down={held} onpress={press} />
         {/if}
 
@@ -435,7 +442,7 @@
     {#if mode === 'title'}
       <div class="overlay">
         {#if menu === 'howto'}
-          <HowTo color={COLORS[0]} />
+          <HowTo color={COLORS[0]} keys={!touch} />
         {:else}
           <h1>間合い</h1>
         {/if}
@@ -444,7 +451,7 @@
             <button onclick={() => (menu = 'main')}>戻る</button>
           {:else if menu === 'main'}
             <button onclick={() => start('cpu')}>VS CPU</button>
-            <button onclick={() => start('versus')}>オフライン</button>
+            {#if !touch}<button onclick={() => start('versus')}>オフライン</button>{/if}
             <button onclick={() => { netError = ''; menu = 'online'; }}>オンライン</button>
             <button onclick={() => (menu = 'howto')}>操作説明</button>
             {#if netError}<p class="note">{netError}</p>{/if}
@@ -482,10 +489,16 @@
       </div>
     {/if}
   </div>
+
+  {#if touch && mode !== 'title' && view.phase !== 'over'}
+    <TouchPad keys={KEYS[0]} color={COLORS[mode === 'online' ? me : 0]} down={held} onpress={press} />
+  {/if}
 </main>
 
 <style>
   main { min-height: 100vh; display: grid; place-items: center; }
+  /* portrait phone: screen on top, the rest is for thumbs */
+  @media (orientation: portrait) { main { place-items: start center; padding-top: env(safe-area-inset-top); } }
   .screen {
     position: relative; container-type: inline-size;
     width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9;
@@ -496,28 +509,28 @@
   .paused { font: 700 22px ui-monospace, monospace; fill: #ffd23b; }
 
   .overlay {
-    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: rgba(8, 10, 15, 0.7); gap: 4cqw;
+    position: fixed; inset: 0; z-index: 3; container-type: size; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(8, 10, 15, 0.7); gap: 7.11cqmin;
   }
-  .overlay h1 { font-size: 9cqw; margin: 0; letter-spacing: 0.25em; margin-right: -0.25em; }
-  .menu { display: flex; flex-direction: column; align-items: center; gap: 1.2cqw; }
+  .overlay h1 { font-size: 16.0cqmin; margin: 0; letter-spacing: 0.25em; margin-right: -0.25em; }
+  .menu { display: flex; flex-direction: column; align-items: center; gap: 2.13cqmin; }
   .menu button {
-    position: relative; font: 800 2.4cqw system-ui, sans-serif; letter-spacing: 0.15em;
-    color: #8a93a8; background: none; border: none; padding: 0.4cqw 2cqw; cursor: pointer;
+    position: relative; font: 800 4.27cqmin system-ui, sans-serif; letter-spacing: 0.15em;
+    color: #8a93a8; background: none; border: none; padding: 0.71cqmin 3.56cqmin; cursor: pointer;
   }
   .menu button:hover:not(:disabled), .menu button:focus-visible { color: #fff; outline: none; }
   .menu button:disabled { opacity: 0.4; cursor: default; }
   .menu button:disabled::before { display: none; }
   .code {
-    font: 800 5cqw ui-monospace, monospace; letter-spacing: 0.3em; margin-right: -0.3em; color: #fff;
+    font: 800 8.89cqmin ui-monospace, monospace; letter-spacing: 0.3em; margin-right: -0.3em; color: #fff;
     width: 5.2ch; text-align: center; background: none; border: none;
     padding: 0; outline: none; text-transform: uppercase;
   }
-  input.code { border-bottom: 0.3cqw solid #3a4254; }
+  input.code { border-bottom: 0.53cqmin solid #3a4254; }
   input.code:focus { border-bottom-color: #4cc9f0; }
-  .note { margin: 0 0 1cqw; font: 700 1.6cqw system-ui, sans-serif; letter-spacing: 0.15em; color: #8a93a8; }
+  .note { margin: 0 0 1.78cqmin; font: 700 2.84cqmin system-ui, sans-serif; letter-spacing: 0.15em; color: #8a93a8; }
   .menu button:hover::before, .menu button:focus-visible::before {
     content: ''; position: absolute; left: 0; top: 50%; translate: 0 -50%;
-    border: 0.6cqw solid transparent; border-left: 0.9cqw solid #4cc9f0; border-right: 0;
+    border: 1.07cqmin solid transparent; border-left: 1.6cqmin solid #4cc9f0; border-right: 0;
   }
 </style>
