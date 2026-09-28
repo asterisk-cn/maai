@@ -58,15 +58,15 @@ export const MOVES: Record<MoveId, Move> = {
     startup: 4, active: 3, recovery: 9,
     hit: { x0: 20, x1: 88, y0: -34, y1: 0 },
     thickness: 34, hold: 5,
-    damage: 11, kb: 6, cos: 0.9396926207859084, sin: 0.3420201433256687, // 20°
+    damage: 10, kb: 6, cos: 0.9396926207859084, sin: 0.3420201433256687, // 20°
     hitstop: 6, lunge: 1.5,
   },
   long: {
     id: 'long',
-    startup: 14, active: 4, recovery: 28,
+    startup: 16, active: 4, recovery: 28,
     hit: { x0: 32, x1: 213, y0: -18, y1: 0 },
     thickness: 18, hold: 18,
-    damage: 9, kb: 10, cos: 0.8660254037844387, sin: 0.5, // 30°
+    damage: 10, kb: 10, cos: 0.8660254037844387, sin: 0.5, // 30°
     hitstop: 9, lunge: 0,
   },
 };
