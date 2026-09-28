@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from './Icon.svelte';
+
   type Action = 'left' | 'right' | 'short' | 'long';
 
   let { x, y, keys, color, down, onpress }: {
@@ -40,17 +42,7 @@
       <g transform="translate(0 {on ? 4 : 0})">
         <circle r={R} fill={b.attack ? color : '#3a4254'} stroke="#0b0e15" stroke-width="3"
           opacity={on ? 0.8 : 1} />
-        <g class="icon" fill={b.attack ? '#0d1017' : '#e8ecf5'}>
-          {#if b.a === 'left'}
-            <polygon points="-8,0 6,-9 6,9" />
-          {:else if b.a === 'right'}
-            <polygon points="8,0 -6,-9 -6,9" />
-          {:else if b.a === 'short'}
-            <rect x="-9" y="-6" width="18" height="12" rx="2" />
-          {:else if b.a === 'long'}
-            <rect x="-14" y="-2.5" width="28" height="5" rx="1.5" />
-          {/if}
-        </g>
+        <g class="icon"><Icon a={b.a} fill={b.attack ? '#0d1017' : '#e8ecf5'} /></g>
       </g>
     </g>
   {/each}

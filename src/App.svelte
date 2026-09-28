@@ -8,6 +8,7 @@
   import { cpuInput, newCpuMemory } from './lib/cpu';
   import Fighter from './lib/Fighter.svelte';
   import Pad from './lib/Pad.svelte';
+  import HowTo from './lib/HowTo.svelte';
   import { Rollback, type Packet } from './lib/rollback';
   import { connect, newRoomCode, type Peer } from './lib/net';
 
@@ -35,7 +36,7 @@
   type Mode = 'title' | 'cpu' | 'versus' | 'online';
   let mode = $state<Mode>('title');
   // title-screen pages
-  let menu = $state<'main' | 'online' | 'host' | 'join' | 'connecting'>('main');
+  let menu = $state<'main' | 'online' | 'host' | 'join' | 'connecting' | 'howto'>('main');
   let paused = $state(false);
   let showBoxes = $state(false);
 
@@ -433,12 +434,19 @@
 
     {#if mode === 'title'}
       <div class="overlay">
-        <h1>間合い</h1>
+        {#if menu === 'howto'}
+          <HowTo color={COLORS[0]} />
+        {:else}
+          <h1>間合い</h1>
+        {/if}
         <div class="menu">
-          {#if menu === 'main'}
+          {#if menu === 'howto'}
+            <button onclick={() => (menu = 'main')}>戻る</button>
+          {:else if menu === 'main'}
             <button onclick={() => start('cpu')}>VS CPU</button>
             <button onclick={() => start('versus')}>オフライン</button>
             <button onclick={() => { netError = ''; menu = 'online'; }}>オンライン</button>
+            <button onclick={() => (menu = 'howto')}>操作説明</button>
             {#if netError}<p class="note">{netError}</p>{/if}
           {:else if menu === 'online'}
             <button onclick={hostRoom}>部屋を作る</button>
