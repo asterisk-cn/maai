@@ -13,11 +13,11 @@ const WALK_SPEED = 4.2;
 export const HALF_W = 30;
 export const BODY_H = 60;
 
-const DASH_FRAMES = 12;
-const DASH_SPEED = 24; // decays linearly → ~150px
+export const DASH_FRAMES = 12;
+export const DASH_SPEED = 24; // decays linearly → ~150px
 const DASH_CANCEL = 4; // attacks allowed from this dash frame
-const DASH_RECOVERY = 7;
-const BACKDASH_RECOVERY = 11;
+export const DASH_RECOVERY = 7;
+export const BACKDASH_RECOVERY = 11;
 const BUFFER_FRAMES = 5;
 const DOUBLE_TAP = 12;
 const READY_FRAMES = 70;
@@ -303,7 +303,10 @@ function act(g: Game, f: Fighter, o: Fighter, input: Input) {
 
   // ---- state expiry
   if (f.state === 'attack' && f.move && f.sf >= totalFrames(MOVES[f.move])) setState(f, 'idle');
-  if (f.state === 'dash' && f.sf >= DASH_FRAMES) setState(f, 'dashRec');
+  if (f.state === 'dash' && f.sf >= DASH_FRAMES) {
+    setState(f, 'dashRec');
+    g.effects.push({ kind: 'dust', x: f.x, y: f.y, t: 0, life: 14, big: false, dir: f.dashDir });
+  }
   if (f.state === 'dashRec' && f.sf >= (f.back ? BACKDASH_RECOVERY : DASH_RECOVERY)) setState(f, 'idle');
   if (f.state === 'hit' && f.hitstun <= 0 && !f.airborne) setState(f, 'idle');
   if (f.state === 'hit') f.hitstun--;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { BODY_H, HALF_W, GROUND, WALL_L, WALL_R, MAX_HP, bodyRect, type Fighter } from './engine';
+  import { BODY_H, HALF_W, GROUND, DASH_SPEED, DASH_RECOVERY, BACKDASH_RECOVERY, WALL_L, WALL_R, MAX_HP, bodyRect, type Fighter } from './engine';
   import { CRACKS, makeShards, type Pt } from './breakage';
 
   let { f, color }: { f: Fighter; color: string } = $props();
@@ -12,15 +12,24 @@
   const r = $derived(bodyRect(f));
 
   // cosmetic squash & stretch for non-attack states
+  // dash: stretch with speed; recovery: a braking squash that eases out exactly
+  // when the fighter can act again, so the dead frames read as dead
+  const dashK = $derived(f.state === 'dash' ? Math.min(1, Math.abs(f.vx) / DASH_SPEED) : 0);
+  const brake = $derived(
+    f.state === 'dashRec' ? 1 - f.sf / (f.back ? BACKDASH_RECOVERY : DASH_RECOVERY) : 0,
+  );
+
   const scale = $derived.by((): [number, number] => {
-    if (f.state === 'dash') return [1.22, 0.84];
+    if (f.state === 'dash') return [1 + 0.26 * dashK, 1 - 0.18 * dashK];
+    if (f.state === 'dashRec') return [1 + 0.14 * brake, 1 - 0.16 * brake];
     if (f.state === 'hit' && f.sf < 8) return [0.85, 1.12];
     return [1, 1];
   });
 
   const spin = $derived(
     f.state === 'hit' && f.airborne ? -Math.min(160, f.sf * Math.hypot(f.vx, f.vy) * 0.9)
-    : f.state === 'dash' ? (f.back ? -6 : 8)
+    : f.state === 'dash' ? (f.back ? -6 : 8) * (0.4 + 0.6 * dashK)
+    : f.state === 'dashRec' ? (f.back ? 7 : -9) * brake // lean against the slide
     : 0,
   );
 
