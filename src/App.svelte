@@ -331,9 +331,7 @@
               {@const y = GROUND + 20 + f.id * 8}
               <g opacity="0.6">
                 <line x1={f.x} y1={y} x2={f.x + MOVES.long.hit.x1 * f.facing} y2={y}
-                  stroke={COLORS[f.id]} stroke-width="3" opacity="0.4" />
-                <line x1={f.x + MOVES.long.sweet! * f.facing} y1={y} x2={f.x + MOVES.long.hit.x1 * f.facing} y2={y}
-                  stroke={COLORS[f.id]} stroke-width="5" />
+                  stroke={COLORS[f.id]} stroke-width="3" />
                 <line x1={f.x} y1={y} x2={f.x + MOVES.short.hit.x1 * f.facing} y2={y}
                   stroke="#fff" stroke-width="3" opacity="0.7" />
               </g>

@@ -65,8 +65,8 @@ export function cpuInput(g: Game, id: 0 | 1, mem: CpuMemory): Input {
     if (r < 0.7) return { ...input, ...hold(-toward), dash: true };
   }
 
-  // --- tip poke
-  if (dist > MOVES.long.sweet! && dist < LONG_REACH && mem.cooldown <= 0 && Math.random() < 0.06) {
+  // --- poke from just outside short range
+  if (dist > MOVES.short.hit.x1 + HALF_W * 2 && dist < LONG_REACH && mem.cooldown <= 0 && Math.random() < 0.06) {
     mem.cooldown = 30;
     return { ...input, long: true };
   }

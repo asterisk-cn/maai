@@ -40,7 +40,6 @@ export interface Move {
   active: number;
   recovery: number;
   hit: Box; // relative to feet; x forward-positive, y up-negative
-  sweet?: number; // contact distance at/after which it's a tip hit (先端)
   thickness: number; // body height while stretched
   hold: number; // recovery frames the body stays fully stretched
   damage: number;
@@ -66,7 +65,6 @@ export const MOVES: Record<MoveId, Move> = {
     id: 'long',
     startup: 14, active: 4, recovery: 28,
     hit: { x0: 32, x1: 213, y0: -18, y1: 0 },
-    sweet: 173,
     thickness: 18, hold: 18,
     damage: 9, kb: 10, cos: 0.8660254037844387, sin: 0.5, // 30°
     hitstop: 9, lunge: 0,
@@ -458,11 +456,10 @@ function applyHit(g: Game, att: Fighter, def: Fighter, hb: Box, m: Move, hurt: B
       .filter((h) => overlap(hb, h))
       .map((h) => (att.facing === 1 ? Math.max(hb.x0, h.x0) - att.x : att.x - Math.min(hb.x1, h.x1))),
   );
-  const sweet = m.sweet !== undefined && contact >= m.sweet;
 
-  const dmg = Math.round(m.damage * (sweet ? 1.35 : 1) * (counter ? 1.2 : 1));
+  const dmg = Math.round(m.damage * (counter ? 1.2 : 1));
   def.hp = Math.max(0, def.hp - dmg);
-  const kb = m.kb * (sweet ? 1.3 : 1) * (counter ? 1.1 : 1);
+  const kb = m.kb * (counter ? 1.1 : 1);
 
   const dir = att.facing;
   def.vx = m.cos * kb * dir;
@@ -490,15 +487,15 @@ function applyHit(g: Game, att: Fighter, def: Fighter, hb: Box, m: Move, hurt: B
     def.vy = Math.min(def.vy * 1.6, -8);
   }
 
-  const hs = m.hitstop + (sweet ? 5 : 0) + (counter ? 3 : 0) + (def.hp <= 0 ? 20 : 0);
+  const hs = m.hitstop + (counter ? 3 : 0) + (def.hp <= 0 ? 20 : 0);
   g.hitstop = Math.max(g.hitstop, hs);
-  g.shake = Math.max(g.shake, hs + (sweet ? 6 : 0));
+  g.shake = Math.max(g.shake, hs);
 
   g.effects.push({
     kind: 'burst',
     x: att.x + (contact + 6) * dir,
     y: att.y + (m.hit.y0 + m.hit.y1) / 2,
-    t: 0, life: 16 + hs, big: sweet || counter || m.id === 'long', dir,
+    t: 0, life: 16 + hs, big: counter || m.id === 'long', dir,
   });
 }
 
