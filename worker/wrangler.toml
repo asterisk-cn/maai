@@ -2,6 +2,10 @@ name = "maai"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
+[[routes]]
+pattern = "maai.astrsk.work"
+custom_domain = true
+
 # the built game; /room/* has no file, so it falls through to the Worker (signaling)
 [assets]
 directory = "../dist"
