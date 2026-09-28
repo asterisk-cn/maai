@@ -12,6 +12,17 @@
   const COLORS: [string, string] = ['#4cc9f0', '#ff6b5b'];
   const STEP_MS = 1000 / FPS;
 
+  // HUD layout (SVG units): life bars in the ceiling band, buttons on the floor
+  const BAR_OUT = 40;
+  const BAR_GAP = 40;
+  const BAR_W = W / 2 - BAR_OUT - BAR_GAP;
+  const BAR_Y = 22;
+  const BAR_H = 18;
+  const WIN_Y = BAR_Y + BAR_H + 22; // centre of the round-win marks
+  const PAD_X = 100;
+  const PAD_Y = 598;
+  const PAD_SPAN = 278; // left button centre → last button centre
+
   type Action = 'left' | 'right' | 'short' | 'long' | 'dash';
   const KEYS: Record<Action, string>[] = [
     { left: 'KeyA', right: 'KeyD', short: 'KeyF', long: 'KeyG', dash: 'KeyH' },
@@ -81,6 +92,7 @@
     if (import.meta.env.DEV) {
       Object.assign(window, {
         __game: () => game,
+        __mode: () => mode,
         __step: (n = 1) => { for (let i = 0; i < n; i++) tick(); view = structuredClone(game); },
       });
     }
@@ -172,25 +184,7 @@
 </script>
 
 <main>
-  {#if mode !== 'title'}
-    <header>
-      {#each view.fighters as f (f.id)}
-        <div class="hud" class:right={f.id === 1} style:--pc={COLORS[f.id]}>
-          <div class="bar">
-            <div class="trail" style:width="{(f.hpTrail / MAX_HP) * 100}%"></div>
-            <div class="hp" class:low={f.hp <= 30} style:width="{(f.hp / MAX_HP) * 100}%"></div>
-          </div>
-          <div class="wins">
-            {#each Array(ROUNDS_TO_WIN) as _, i (i)}
-              <span class:won={i < f.wins}></span>
-            {/each}
-          </div>
-        </div>
-      {/each}
-    </header>
-  {/if}
-
-  <div class="stage-wrap">
+  <div class="screen">
     <svg viewBox="0 0 {W} {H}" class="stage">
       <defs>
         <linearGradient id="shade" x1="0" x2="1">
@@ -296,6 +290,32 @@
       </g>
 
       {#if mode !== 'title'}
+        <!-- HUD: slanted life bars, lost life drains toward the centre -->
+        {#each view.fighters as f (f.id)}
+          {@const x0 = f.id === 0 ? BAR_OUT : W / 2 + BAR_GAP}
+          {@const s = f.id === 0 ? -1 : 1}
+          {@const cx = x0 + BAR_W / 2}
+          <g transform="translate({cx} {BAR_Y + BAR_H / 2}) skewX({s * 24}) translate({-cx} {-(BAR_Y + BAR_H / 2)})">
+            <rect x={x0 - 3} y={BAR_Y - 3} width={BAR_W + 6} height={BAR_H + 6} fill="#0b0e15" />
+            <rect x={x0} y={BAR_Y} width={BAR_W} height={BAR_H} fill="#262d3c" />
+            <rect x={f.id === 0 ? x0 : x0 + BAR_W * (1 - f.hpTrail / MAX_HP)} y={BAR_Y}
+              width={BAR_W * (f.hpTrail / MAX_HP)} height={BAR_H} fill="#e8ecf5" />
+            <rect x={f.id === 0 ? x0 : x0 + BAR_W * (1 - f.hp / MAX_HP)} y={BAR_Y}
+              width={BAR_W * (f.hp / MAX_HP)} height={BAR_H} fill={f.hp <= 30 ? '#ffd23b' : COLORS[f.id]} />
+          </g>
+          {#each Array(ROUNDS_TO_WIN) as _, i (i)}
+            {@const wx = f.id === 0 ? BAR_OUT + 8 + i * 22 : W - BAR_OUT - 8 - i * 22}
+            <rect x={wx - 6} y={WIN_Y - 6} width="12" height="12"
+              transform="rotate(45 {wx} {WIN_Y})"
+              fill={i < f.wins ? COLORS[f.id] : '#0b0e15'} stroke={i < f.wins ? COLORS[f.id] : '#3a4254'} stroke-width="2" />
+          {/each}
+        {/each}
+
+        <Pad x={PAD_X} y={PAD_Y} keys={KEYS[0]} labels={LABELS[0]} color={COLORS[0]} down={held} onpress={press} />
+        {#if mode === 'versus'}
+          <Pad x={W - PAD_X - PAD_SPAN} y={PAD_Y} keys={KEYS[1]} labels={LABELS[1]} color={COLORS[1]} down={held} onpress={press} />
+        {/if}
+
         {#if view.phase === 'ready'}
           <text x={W / 2} y={H / 2 - 50} text-anchor="middle" class="big">
             {view.phaseTimer > 25 ? `ROUND ${view.round}` : 'FIGHT'}
@@ -329,52 +349,32 @@
       </div>
     {/if}
   </div>
-
-  {#if mode !== 'title'}
-    <div class="pads">
-      <Pad keys={KEYS[0]} labels={LABELS[0]} color={COLORS[0]} down={held} onpress={press} />
-      {#if mode === 'versus'}
-        <Pad keys={KEYS[1]} labels={LABELS[1]} color={COLORS[1]} down={held} onpress={press} />
-      {/if}
-    </div>
-  {/if}
 </main>
 
 <style>
-  main { max-width: 1200px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-  header { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-  .hud { display: flex; flex-direction: column; gap: 6px; }
-  .hud.right { align-items: flex-end; }
-  .bar {
-    position: relative; width: 100%; height: 22px; background: #1b2130;
-    border: 2px solid #2c3445; border-radius: 3px; overflow: hidden;
+  main { min-height: 100vh; display: grid; place-items: center; }
+  .screen {
+    position: relative; container-type: inline-size;
+    width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9;
   }
-  .bar > div { position: absolute; top: 0; bottom: 0; left: 0; }
-  .hud.right .bar > div { left: auto; right: 0; }
-  .trail { background: #e8ecf5; }
-  .hp { background: var(--pc); transition: width 60ms linear; }
-  .hp.low { background: #ffd23b; }
-  .wins { display: flex; gap: 6px; }
-  .wins span { width: 12px; height: 12px; transform: rotate(45deg); outline: 2px solid #3a4152; outline-offset: -2px; }
-  .wins span.won { background: var(--pc); outline-color: var(--pc); }
-
-  .stage-wrap { position: relative; }
-  .stage { width: 100%; display: block; border-radius: 6px; }
+  .stage { width: 100%; height: 100%; display: block; }
   .big { font: 900 84px system-ui, sans-serif; fill: #fff; letter-spacing: 0.08em; }
   .big.ko { fill: #ffd23b; }
   .paused { font: 700 22px ui-monospace, monospace; fill: #ffd23b; }
 
   .overlay {
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: rgba(10, 12, 18, 0.72); border-radius: 6px; gap: 28px;
+    background: rgba(8, 10, 15, 0.7); gap: 4cqw;
   }
-  .overlay h1 { font-size: clamp(48px, 10vw, 110px); margin: 0; letter-spacing: 0.25em; margin-right: -0.25em; }
-  .menu { display: flex; gap: 16px; }
+  .overlay h1 { font-size: 9cqw; margin: 0; letter-spacing: 0.25em; margin-right: -0.25em; }
+  .menu { display: flex; flex-direction: column; align-items: center; gap: 1.2cqw; }
   .menu button {
-    font: 700 18px system-ui, sans-serif; color: #fff; background: #232a3b; border: 2px solid #3a4152;
-    padding: 12px 28px; border-radius: 6px; cursor: pointer;
+    position: relative; font: 800 2.4cqw system-ui, sans-serif; letter-spacing: 0.15em;
+    color: #8a93a8; background: none; border: none; padding: 0.4cqw 2cqw; cursor: pointer;
   }
-  .menu button:hover, .menu button:focus-visible { border-color: #4cc9f0; outline: none; }
-
-  .pads { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .menu button:hover, .menu button:focus-visible { color: #fff; outline: none; }
+  .menu button:hover::before, .menu button:focus-visible::before {
+    content: ''; position: absolute; left: 0; top: 50%; translate: 0 -50%;
+    border: 0.6cqw solid transparent; border-left: 0.9cqw solid #4cc9f0; border-right: 0;
+  }
 </style>

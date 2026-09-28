@@ -6,7 +6,7 @@ export const H = 675;
 export const GROUND = 520;
 export const WALL_L = 70;
 export const WALL_R = W - 70;
-export const CEIL = 60;
+export const CEIL = 96;
 
 const GRAVITY = 0.55;
 const WALK_SPEED = 4.2;

@@ -1,7 +1,9 @@
 <script lang="ts">
   type Action = 'left' | 'right' | 'short' | 'long' | 'dash';
 
-  let { keys, labels, color, down, onpress }: {
+  let { x, y, keys, labels, color, down, onpress }: {
+    x: number; // SVG position of the left direction button
+    y: number;
     keys: Record<Action, string>; // code sent when the button is pressed
     labels: Record<Action, string>;
     color: string;
@@ -9,21 +11,20 @@
     onpress: (code: string, isDown: boolean) => void;
   } = $props();
 
-  // leverless layout: two direction buttons for the left hand, three attack buttons in an arc
-  const LEFT: { a: Action; dy: number }[] = [
-    { a: 'left', dy: 0 },
-    { a: 'right', dy: 14 },
-  ];
-  const RIGHT: { a: Action; dy: number }[] = [
-    { a: 'short', dy: 10 },
-    { a: 'long', dy: 0 },
-    { a: 'dash', dy: 6 },
+  const R = 25;
+  // leverless layout: two direction buttons, then three attack buttons in an arc
+  const LAYOUT: { a: Action; dx: number; dy: number; attack: boolean }[] = [
+    { a: 'left', dx: 0, dy: 0, attack: false },
+    { a: 'right', dx: 60, dy: 12, attack: false },
+    { a: 'short', dx: 158, dy: 8, attack: true },
+    { a: 'long', dx: 218, dy: -2, attack: true },
+    { a: 'dash', dx: 278, dy: 4, attack: true },
   ];
 
   function bind(code: string) {
     return {
       onpointerdown: (e: PointerEvent) => {
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
         onpress(code, true);
       },
       onpointerup: () => onpress(code, false),
@@ -32,46 +33,22 @@
   }
 </script>
 
-<div class="panel" style:--pc={color}>
-  {#each [LEFT, RIGHT] as group, gi (gi)}
-    <div class="group">
-      {#each group as b (b.a)}
-        <button
-          class:attack={gi === 1}
-          class:on={down.has(keys[b.a])}
-          style:margin-top="{b.dy}px"
-          aria-label={b.a}
-          {...bind(keys[b.a])}
-        >
-          <span class="cap">{labels[b.a]}</span>
-        </button>
-      {/each}
-    </div>
+<g transform="translate({x} {y})">
+  {#each LAYOUT as b (b.a)}
+    {@const on = down.has(keys[b.a])}
+    <g class="btn" role="button" tabindex="-1" aria-label={b.a} {...bind(keys[b.a])}
+      transform="translate({b.dx} {b.dy})">
+      <circle cy="5" r={R} fill="#0b0e15" />
+      <g transform="translate(0 {on ? 4 : 0})">
+        <circle r={R} fill={b.attack ? color : '#3a4254'} stroke="#0b0e15" stroke-width="3"
+          opacity={on ? 0.8 : 1} />
+        <text y="5" text-anchor="middle" fill={b.attack ? '#0d1017' : '#e8ecf5'}>{labels[b.a]}</text>
+      </g>
+    </g>
   {/each}
-</div>
+</g>
 
 <style>
-  .panel {
-    display: flex; gap: 34px; align-items: flex-start; padding: 12px 18px 16px;
-    background: #141924; border: 1px solid #262d3c; border-radius: 12px;
-  }
-  .group { display: flex; gap: 10px; }
-  button {
-    --face: #3a4254;
-    width: 54px; height: 54px; padding: 0; border-radius: 50%; cursor: pointer;
-    touch-action: none; user-select: none;
-    background: var(--face);
-    border: 3px solid #0b0e15;
-    box-shadow: 0 4px 0 #0b0e15;
-    transition: transform 30ms, box-shadow 30ms;
-  }
-  button.attack { --face: var(--pc); }
-  button:focus { outline: none; }
-  button.on {
-    transform: translateY(3px);
-    box-shadow: 0 1px 0 #0b0e15;
-    background: color-mix(in srgb, var(--face) 80%, #000);
-  }
-  .cap { font: 800 14px ui-monospace, monospace; color: #0d1017; opacity: 0.5; }
-  button:not(.attack) .cap { color: #e8ecf5; }
+  .btn { cursor: pointer; touch-action: none; outline: none; }
+  text { font: 800 14px ui-monospace, monospace; opacity: 0.55; pointer-events: none; user-select: none; }
 </style>
