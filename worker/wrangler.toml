@@ -1,0 +1,15 @@
+name = "maai"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# the built game; /room/* has no file, so it falls through to the Worker (signaling)
+[assets]
+directory = "../dist"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]

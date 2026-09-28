@@ -8,6 +8,8 @@
   import { cpuInput, newCpuMemory } from './lib/cpu';
   import Fighter from './lib/Fighter.svelte';
   import Pad from './lib/Pad.svelte';
+  import { Rollback, type Packet } from './lib/rollback';
+  import { connect, newRoomCode, type Peer } from './lib/net';
 
   const COLORS: [string, string] = ['#4cc9f0', '#ff6b5b'];
   const STEP_MS = 1000 / FPS;
@@ -29,8 +31,10 @@
     { left: 'ArrowLeft', right: 'ArrowRight', short: 'Comma', long: 'Period', dash: 'Slash' },
   ];
 
-  type Mode = 'title' | 'cpu' | 'versus';
+  type Mode = 'title' | 'cpu' | 'versus' | 'online';
   let mode = $state<Mode>('title');
+  // title-screen pages
+  let menu = $state<'main' | 'online' | 'host' | 'join' | 'connecting'>('main');
   let paused = $state(false);
   let showBoxes = $state(false);
 
@@ -38,19 +42,38 @@
   let view = $state.raw<Game>(structuredClone(game));
   let cpu = newCpuMemory();
 
+  // online play
+  let rb: Rollback | null = null;
+  let peer: Peer | null = null;
+  let hangUp: (() => void) | null = null;
+  let me = $state<0 | 1>(0);
+  let roomCode = $state('');
+  let joinCode = $state('');
+  let netError = $state('');
+  let wantRematch = $state(false);
+  let peerRematch = false;
+  const CLOSE_TEXT = { full: '満室です', unreachable: '接続できません', failed: '接続できません', left: '切断されました' };
+
   const held = new SvelteSet<string>();
   const pressed = new Set<string>();
   let stepOnce = false;
 
   function readPlayer(p: 0 | 1): Input {
-    // solo play: 1P may also use the 2P keys
-    const sets = mode === 'cpu' && p === 0 ? [KEYS[0], KEYS[1]] : [KEYS[p]];
+    // playing alone (CPU / online): either key set works
+    const sets = (mode === 'cpu' && p === 0) || mode === 'online' ? [KEYS[0], KEYS[1]] : [KEYS[p]];
     const h = (a: Action) => sets.some((k) => held.has(k[a]));
     const pr = (a: Action) => sets.some((k) => pressed.has(k[a]));
     return { left: h('left'), right: h('right'), short: pr('short'), long: pr('long'), dash: pr('dash') };
   }
 
   function tick() {
+    if (mode === 'online') {
+      if (!rb) return;
+      // a stalled frame keeps this frame's presses for the next attempt
+      if (rb.tick(readPlayer(0))) pressed.clear();
+      game = rb.game;
+      return;
+    }
     const p1 = readPlayer(0);
     const p2 = mode === 'cpu' ? cpuInput(game, 1, cpu) : readPlayer(1);
     step(game, [p1, p2]);
@@ -65,6 +88,82 @@
     view = structuredClone(game);
   }
 
+  // ---- online session
+  function openRoom(code: string) {
+    netError = '';
+    hangUp = connect(code, {
+      onOpen(p) {
+        peer = p;
+        startOnline();
+      },
+      onGame: (m) => rb?.receive(m as Packet),
+      onCtl(m) {
+        if ((m as { t: string }).t === 'rematch') {
+          peerRematch = true;
+          maybeRematch();
+        }
+      },
+      onClose(reason) {
+        rb = null;
+        peer = null;
+        hangUp = null;
+        if (mode === 'online' || menu !== 'main') netError = CLOSE_TEXT[reason];
+        mode = 'title';
+        menu = 'main';
+      },
+    });
+  }
+
+  function hostRoom() {
+    roomCode = newRoomCode();
+    menu = 'host';
+    openRoom(roomCode);
+  }
+
+  function joinRoom() {
+    const code = joinCode.trim().toUpperCase();
+    if (code.length !== 4) return;
+    roomCode = code;
+    menu = 'connecting';
+    openRoom(code);
+  }
+
+  function startOnline() {
+    rb = new Rollback(peer!.role, (p) => peer?.sendGame(p));
+    me = peer!.role;
+    game = rb.game;
+    mode = 'online';
+    menu = 'main';
+    paused = false;
+    wantRematch = false;
+    peerRematch = false;
+    view = structuredClone(game);
+  }
+
+  function rematch() {
+    if (mode !== 'online') return start(mode);
+    wantRematch = true;
+    peer?.sendCtl({ t: 'rematch' });
+    maybeRematch();
+  }
+
+  function maybeRematch() {
+    if (wantRematch && peerRematch) startOnline();
+  }
+
+  function toTitle() {
+    const h = hangUp;
+    hangUp = null;
+    rb = null;
+    peer = null;
+    mode = 'title';
+    menu = 'main';
+    h?.();
+    netError = '';
+  }
+
+  const focus = (el: HTMLElement) => el.focus();
+
   function press(code: string, down: boolean) {
     if (!down) { held.delete(code); return; }
     held.add(code);
@@ -78,10 +177,11 @@
     if (down && e.repeat) return;
     press(e.code, down);
     if (!down) return;
-    if (e.code === 'KeyP' || e.code === 'Escape') paused = !paused;
-    if (e.code === 'BracketRight' && paused) stepOnce = true;
+    const offline = mode !== 'online'; // no pausing a live match
+    if (offline && (e.code === 'KeyP' || e.code === 'Escape')) paused = !paused;
+    if (offline && e.code === 'BracketRight' && paused) stepOnce = true;
     if (e.code === 'Digit0') showBoxes = !showBoxes;
-    if (game.phase === 'over' && e.code === 'Enter') start(mode);
+    if (game.phase === 'over' && e.code === 'Enter') rematch();
   }
 
   onMount(() => {
@@ -89,6 +189,7 @@
       Object.assign(window, {
         __game: () => game,
         __mode: () => mode,
+        __rb: () => rb,
         __step: (n = 1) => { for (let i = 0; i < n; i++) tick(); view = structuredClone(game); },
       });
     }
@@ -307,7 +408,11 @@
           {/each}
         {/each}
 
-        <Pad x={PAD_X} y={PAD_Y} keys={KEYS[0]} color={COLORS[0]} down={held} onpress={press} />
+        {#if mode === 'online'}
+          <Pad x={me === 0 ? PAD_X : W - PAD_X - PAD_SPAN} y={PAD_Y} keys={KEYS[0]} color={COLORS[me]} down={held} onpress={press} />
+        {:else}
+          <Pad x={PAD_X} y={PAD_Y} keys={KEYS[0]} color={COLORS[0]} down={held} onpress={press} />
+        {/if}
         {#if mode === 'versus'}
           <Pad x={W - PAD_X - PAD_SPAN} y={PAD_Y} keys={KEYS[1]} color={COLORS[1]} down={held} onpress={press} />
         {/if}
@@ -329,8 +434,31 @@
       <div class="overlay">
         <h1>間合い</h1>
         <div class="menu">
-          <button onclick={() => start('cpu')}>VS CPU</button>
-          <button onclick={() => start('versus')}>2P 対戦</button>
+          {#if menu === 'main'}
+            <button onclick={() => start('cpu')}>VS CPU</button>
+            <button onclick={() => start('versus')}>2P 対戦</button>
+            <button onclick={() => { netError = ''; menu = 'online'; }}>オンライン</button>
+            {#if netError}<p class="note">{netError}</p>{/if}
+          {:else if menu === 'online'}
+            <button onclick={hostRoom}>部屋を作る</button>
+            <button onclick={() => { joinCode = ''; menu = 'join'; }}>部屋に入る</button>
+            <button onclick={() => (menu = 'main')}>戻る</button>
+          {:else if menu === 'host'}
+            <div class="code">{roomCode}</div>
+            <p class="note">待機中</p>
+            <button onclick={toTitle}>戻る</button>
+          {:else if menu === 'join'}
+            <form onsubmit={(e) => { e.preventDefault(); joinRoom(); }}>
+              <input class="code" maxlength="4" bind:value={joinCode} use:focus
+                oninput={() => (joinCode = joinCode.toUpperCase())} aria-label="room code" />
+            </form>
+            <button onclick={joinRoom} disabled={joinCode.trim().length !== 4}>入る</button>
+            <button onclick={() => (menu = 'online')}>戻る</button>
+          {:else}
+            <div class="code">{roomCode}</div>
+            <p class="note">接続中</p>
+            <button onclick={toTitle}>戻る</button>
+          {/if}
         </div>
       </div>
     {:else if view.phase === 'over'}
@@ -339,8 +467,8 @@
           {view.winner !== null ? `${view.winner + 1}P WIN` : 'DRAW'}
         </h1>
         <div class="menu">
-          <button onclick={() => start(mode)}>再戦</button>
-          <button onclick={() => (mode = 'title')}>タイトル</button>
+          <button onclick={rematch} disabled={wantRematch}>{wantRematch ? '待機中' : '再戦'}</button>
+          <button onclick={toTitle}>タイトル</button>
         </div>
       </div>
     {/if}
@@ -368,7 +496,17 @@
     position: relative; font: 800 2.4cqw system-ui, sans-serif; letter-spacing: 0.15em;
     color: #8a93a8; background: none; border: none; padding: 0.4cqw 2cqw; cursor: pointer;
   }
-  .menu button:hover, .menu button:focus-visible { color: #fff; outline: none; }
+  .menu button:hover:not(:disabled), .menu button:focus-visible { color: #fff; outline: none; }
+  .menu button:disabled { opacity: 0.4; cursor: default; }
+  .menu button:disabled::before { display: none; }
+  .code {
+    font: 800 5cqw ui-monospace, monospace; letter-spacing: 0.3em; margin-right: -0.3em; color: #fff;
+    width: 5.2ch; text-align: center; background: none; border: none;
+    padding: 0; outline: none; text-transform: uppercase;
+  }
+  input.code { border-bottom: 0.3cqw solid #3a4254; }
+  input.code:focus { border-bottom-color: #4cc9f0; }
+  .note { margin: 0 0 1cqw; font: 700 1.6cqw system-ui, sans-serif; letter-spacing: 0.15em; color: #8a93a8; }
   .menu button:hover::before, .menu button:focus-visible::before {
     content: ''; position: absolute; left: 0; top: 50%; translate: 0 -50%;
     border: 0.6cqw solid transparent; border-left: 0.9cqw solid #4cc9f0; border-right: 0;

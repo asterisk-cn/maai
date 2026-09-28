@@ -7,16 +7,20 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+    "signal:dev": "wrangler dev -c worker/wrangler.toml --port 8787",
+    "deploy": "vite build && wrangler deploy -c worker/wrangler.toml"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260928.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.3",
     "svelte": "^5.57.0",
     "svelte-check": "^4.7.6",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "wrangler": "^4.142.0"
   },
   "packageManager": "pnpm@10.32.1"
 }

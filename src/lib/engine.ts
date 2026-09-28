@@ -45,7 +45,10 @@ export interface Move {
   hold: number; // recovery frames the body stays fully stretched
   damage: number;
   kb: number;
-  angle: number; // degrees
+  // launch direction as literal constants: Math.cos/sin aren't guaranteed identical across
+  // browsers, and online play needs bit-exact simulation on both machines
+  cos: number;
+  sin: number;
   hitstop: number;
   lunge: number;
 }
@@ -56,7 +59,8 @@ export const MOVES: Record<MoveId, Move> = {
     startup: 4, active: 3, recovery: 9,
     hit: { x0: 20, x1: 88, y0: -34, y1: 0 },
     thickness: 34, hold: 5,
-    damage: 6, kb: 6, angle: 20, hitstop: 6, lunge: 1.5,
+    damage: 6, kb: 6, cos: 0.9396926207859084, sin: 0.3420201433256687, // 20°
+    hitstop: 6, lunge: 1.5,
   },
   long: {
     id: 'long',
@@ -64,7 +68,8 @@ export const MOVES: Record<MoveId, Move> = {
     hit: { x0: 32, x1: 213, y0: -18, y1: 0 },
     sweet: 173,
     thickness: 18, hold: 14,
-    damage: 13, kb: 10, angle: 30, hitstop: 9, lunge: 0,
+    damage: 13, kb: 10, cos: 0.8660254037844387, sin: 0.5, // 30°
+    hitstop: 9, lunge: 0,
   },
 };
 
@@ -211,7 +216,8 @@ export function bodyRect(f: Fighter): BodyRect {
   const r = f.sf - m.startup - m.active;
   if (r <= m.hold) return stretched;
   const t = (r - m.hold) / (m.recovery - m.hold);
-  return mix(stretched, SQUARE, 1 - (1 - t) ** 3);
+  const u = 1 - t;
+  return mix(stretched, SQUARE, 1 - u * u * u);
 }
 
 export function hurtboxes(f: Fighter): Box[] {
@@ -456,9 +462,8 @@ function applyHit(g: Game, att: Fighter, def: Fighter, hb: Box, m: Move, hurt: B
   const kb = m.kb * (sweet ? 1.3 : 1) * (counter ? 1.1 : 1);
 
   const dir = att.facing;
-  const ang = (m.angle * Math.PI) / 180;
-  def.vx = Math.cos(ang) * kb * dir;
-  def.vy = -Math.sin(ang) * kb;
+  def.vx = m.cos * kb * dir;
+  def.vy = -m.sin * kb;
   def.airborne = true;
   def.recoil = false;
   def.wallBounced = false;
