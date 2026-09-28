@@ -1,0 +1,16 @@
+:root {
+  --c-bg: #0d1017;
+  --c-bg2: #151a25;
+  --c-dim: #8a93a8;
+  --c-idle: #2a3142;
+  --c-move: #3a4458;
+  --c-startup: #3ddc97;
+  --c-active: #ff4d6d;
+  --c-recovery: #3a86ff;
+  --c-dash: #b388ff;
+  --c-hit: #ffd23b;
+  --c-invuln: #e8ecf5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--c-bg); color: #e8ecf5; font-family: system-ui, "Hiragino Sans", sans-serif; }
