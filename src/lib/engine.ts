@@ -23,7 +23,7 @@ const DOUBLE_TAP = 12;
 const READY_FRAMES = 70;
 const KO_FRAMES = 110;
 const WALL_BOUNCE_SPEED = 5;
-const WALL_DAMAGE = 3;
+const WALL_DAMAGE = 5;
 
 export const MAX_HP = 100;
 export const ROUNDS_TO_WIN = 2;
