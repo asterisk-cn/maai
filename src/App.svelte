@@ -5,7 +5,7 @@
     FPS, W, H, GROUND, WALL_L, WALL_R, CEIL, MAX_HP, ROUNDS_TO_WIN, MOVES, HALF_W, BODY_H,
     newGame, step, hitbox, hurtboxes, type Game, type Input, type Effect,
   } from './lib/engine';
-  import { cpuInput, newCpuMemory } from './lib/cpu';
+  import { cpuInput, newCpuMemory, type CpuLevel } from './lib/cpu';
   import Fighter from './lib/Fighter.svelte';
   import Pad from './lib/Pad.svelte';
   import HowTo from './lib/HowTo.svelte';
@@ -37,7 +37,8 @@
   type Mode = 'title' | 'cpu' | 'versus' | 'online';
   let mode = $state<Mode>('title');
   // title-screen pages
-  let menu = $state<'main' | 'online' | 'host' | 'join' | 'connecting' | 'howto'>('main');
+  let menu = $state<'main' | 'cpu' | 'online' | 'host' | 'join' | 'connecting' | 'howto'>('main');
+  let cpuLevel: CpuLevel = 2;
   let paused = $state(false);
   let showBoxes = $state(false);
   let touch = $state(false); // coarse pointer: finger-sized buttons instead of the in-screen ones
@@ -84,10 +85,11 @@
     pressed.clear();
   }
 
-  function start(m: Mode) {
+  function start(m: Mode, level: CpuLevel = cpuLevel) {
     mode = m;
+    cpuLevel = level;
     game = newGame();
-    cpu = newCpuMemory();
+    cpu = newCpuMemory(level);
     paused = false;
     view = structuredClone(game);
   }
@@ -448,11 +450,16 @@
           {#if menu === 'howto'}
             <button onclick={() => (menu = 'main')}>戻る</button>
           {:else if menu === 'main'}
-            <button onclick={() => start('cpu')}>VS CPU</button>
+            <button onclick={() => (menu = 'cpu')}>VS CPU</button>
             {#if !touch}<button onclick={() => start('versus')}>オフライン</button>{/if}
             <button onclick={() => { netError = ''; menu = 'online'; }}>オンライン</button>
             <button onclick={() => (menu = 'howto')}>操作説明</button>
             {#if netError}<p class="note">{netError}</p>{/if}
+          {:else if menu === 'cpu'}
+            {#each [1, 2, 3, 4, 5] as const as lv (lv)}
+              <button onclick={() => start('cpu', lv)}>Lv{lv}</button>
+            {/each}
+            <button onclick={() => (menu = 'main')}>戻る</button>
           {:else if menu === 'online'}
             <button onclick={hostRoom}>部屋を作る</button>
             <button onclick={() => { joinCode = ''; menu = 'join'; }}>部屋に入る</button>
